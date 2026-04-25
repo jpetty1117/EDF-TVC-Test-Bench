@@ -10,7 +10,6 @@ This repository contains the software and testing environments for an Electric D
 ## Software Dependencies
 This project is built using [PlatformIO](https://platformio.org/). The following libraries are used:
 - `arduino-libraries/Servo`
-- `paulstoffregen/Encoder`
 - `feilipu/FreeRTOS`
 
 ## Repository Structure
@@ -20,7 +19,7 @@ This project uses a multi-environment PlatformIO configuration to separate the m
 ### Environments
 - **`env:main`**: The core TVC controller utilizing FreeRTOS tasks to orchestrate sensing and actuation. 
   - Source: `src/main_code/`
-- **`env:test_encoder`**: Isolated testing for the quadrature encoder using the Paul Stoffregen library.
+- **`env:test_encoder`**: Isolated testing for the custom quadrature encoder ISR.
   - Source: `src/test_encoder/`
 - **`env:test_servo`**: Isolated testing for servo movement and pulse width calibration.
   - Source: `src/test_servo/`

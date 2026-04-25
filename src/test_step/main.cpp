@@ -1,7 +1,7 @@
 // =============================================================================
 // Test: Servo Step Response — characterize loaded servo tau
 //
-// Uses Paul Stoffregen's Encoder library for reliable quadrature decode.
+// Uses custom direct port manipulation for reliable quadrature decode.
 // Steps gimbal +15° from center, records encoder at 200 Hz for 1 s.
 //
 // CSV columns: time_ms, ticks, angle_rad, angle_deg
@@ -15,7 +15,6 @@
 
 #include <Arduino.h>
 #include <Servo.h>
-#include <Encoder.h>
 
 // ── Pins ─────────────────────────────────────────────────────────────────────
 #define SERVO_PIN       9
@@ -41,13 +40,37 @@
 #define BASELINE_SAMPLES    20        // 100 ms at rest
 #define RESPONSE_SAMPLES    200       // 1 s after step
 
+// ── Encoder Variables ────────────────────────────────────────────────────────
+volatile long encoderCount = 0;
+static uint8_t old_AB = 0;
+
+void handleEncoderInterrupt() {
+  uint8_t current_AB = (PIND >> 2) & 0x03;
+  static const int8_t lookup[] = {0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0};
+  old_AB <<= 2;
+  old_AB |= current_AB;
+  encoderCount += lookup[old_AB & 0x0F];
+}
+
+long readEncoder() {
+  noInterrupts();
+  long ticks = encoderCount;
+  interrupts();
+  return ticks;
+}
+
 // ── Hardware Objects ─────────────────────────────────────────────────────────
-Encoder enc(ENC_A_PIN, ENC_B_PIN);
 static Servo gimbalServo;
 
 // =============================================================================
 void setup() {
   Serial.begin(115200);
+
+  pinMode(ENC_A_PIN, INPUT);
+  pinMode(ENC_B_PIN, INPUT);
+  old_AB = (PIND >> 2) & 0x03;
+  attachInterrupt(digitalPinToInterrupt(ENC_A_PIN), handleEncoderInterrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENC_B_PIN), handleEncoderInterrupt, CHANGE);
 
   gimbalServo.attach(SERVO_PIN, SERVO_MIN_US, SERVO_MAX_US);
   gimbalServo.writeMicroseconds(SERVO_CENTER_US);
@@ -63,14 +86,16 @@ void setup() {
   while (!Serial.available()) { ; }
   while (Serial.available()) Serial.read();
 
-  enc.write(0);   // zero the encoder
+  noInterrupts();
+  encoderCount = 0;   // zero the encoder
+  interrupts();
 
   Serial.println(F("time_ms,ticks,angle_rad,angle_deg"));
 
   // ── Baseline ──────────────────────────────────────────────────────────────
   unsigned long t0 = micros();
   for (int i = 0; i < BASELINE_SAMPLES; i++) {
-    long ticks = enc.read();
+    long ticks = readEncoder();
     unsigned long ms = (micros() - t0) / 1000UL;
     Serial.print(ms);    Serial.print(',');
     Serial.print(ticks); Serial.print(',');
@@ -86,7 +111,7 @@ void setup() {
 
   // ── Response ──────────────────────────────────────────────────────────────
   for (int i = 0; i < RESPONSE_SAMPLES; i++) {
-    long ticks = enc.read();
+    long ticks = readEncoder();
     unsigned long ms = (micros() - t0) / 1000UL;
     Serial.print(ms);    Serial.print(',');
     Serial.print(ticks); Serial.print(',');
