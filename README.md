@@ -26,8 +26,7 @@ This project uses a multi-environment PlatformIO configuration to separate the m
   - Source: `src/test_servo/`
 - **`env:test_step`**: High-frequency step response testing for characterizing gimbal servo dynamics.
   - Source: `src/test_step/`
-- **`env:test_freertos`**: Validation of FreeRTOS task prioritization and timing.
-  - Source: `src/test_freertos/`
+
 
 ## Getting Started
 
